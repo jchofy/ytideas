@@ -1,0 +1,31 @@
+# Terms that indicate useful tutorial/tech content.
+# One term per line. Matches are case-insensitive.
+tutorial
+how to
+guide
+step by step
+explained
+beginner
+course
+walkthrough
+setup
+automation
+workflow
+productivity
+software
+app
+tool
+tools
+chatgpt
+ai tool
+ai tools
+prompt
+prompts
+no code
+nocode
+coding
+python
+excel
+notion
+make.com
+zapier

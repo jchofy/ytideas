@@ -16,6 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app.__main__ import export_current_data, run_pipeline
 from app.analysis import build_videos_dataframe
 from app.config import ensure_editable_keywords_file, get_settings, read_keywords
+from app.content_filter import ensure_editable_rules_files, read_terms
 from app.database import Database
 from app.logger import configure_logging
 
@@ -34,6 +35,7 @@ def main() -> None:
 
     settings = get_settings()
     editable_keywords_path = ensure_editable_keywords_file(settings)
+    include_terms_path, exclude_terms_path = ensure_editable_rules_files(settings)
     settings = replace(settings, keywords_path=editable_keywords_path)
     database = Database(settings.database_path)
     database.initialize()
@@ -48,8 +50,8 @@ def main() -> None:
 
     render_summary(settings=settings, dataframe=dataframe)
 
-    ranking_tab, videos_tab, keywords_tab, files_tab = st.tabs(
-        ["Oportunidades", "Todos los vídeos", "Keywords", "Archivos"]
+    ranking_tab, videos_tab, keywords_tab, filters_tab, files_tab = st.tabs(
+        ["Oportunidades", "Todos los vídeos", "Keywords", "Filtros", "Archivos"]
     )
 
     with ranking_tab:
@@ -60,6 +62,9 @@ def main() -> None:
 
     with keywords_tab:
         render_keywords_editor(editable_keywords_path)
+
+    with filters_tab:
+        render_filters_editor(include_terms_path, exclude_terms_path, settings.require_include_match)
 
     with files_tab:
         render_files(settings.data_dir)
@@ -176,6 +181,42 @@ def render_keywords_editor(keywords_path: Path) -> None:
         col2.info(f"{len(keywords)} keywords activas.")
 
 
+def render_filters_editor(
+    include_terms_path: Path,
+    exclude_terms_path: Path,
+    require_include_match: bool,
+) -> None:
+    """Render editable niche and feasibility filters."""
+    st.subheader("Filtros editoriales")
+    st.write(
+        "Úsalos para priorizar tutoriales/tecnología y bloquear formatos que no puedes adaptar, "
+        "como compras masivas, challenges, hauls o unboxings."
+    )
+    st.info(
+        "`Términos positivos` suben la relevancia editorial. `Términos bloqueados` eliminan vídeos "
+        "en la próxima ejecución del radar."
+    )
+
+    include_text = include_terms_path.read_text(encoding="utf-8") if include_terms_path.exists() else ""
+    exclude_text = exclude_terms_path.read_text(encoding="utf-8") if exclude_terms_path.exists() else ""
+
+    col1, col2 = st.columns(2)
+    edited_include_text = col1.text_area("Términos positivos", value=include_text, height=360)
+    edited_exclude_text = col2.text_area("Términos bloqueados", value=exclude_text, height=360)
+
+    if st.button("Guardar filtros", type="primary"):
+        include_terms_path.write_text(edited_include_text.strip() + "\n", encoding="utf-8")
+        exclude_terms_path.write_text(edited_exclude_text.strip() + "\n", encoding="utf-8")
+        st.success("Filtros guardados. Ejecuta el radar para limpiar resultados existentes.")
+
+    include_count = len(read_terms(include_terms_path))
+    exclude_count = len(read_terms(exclude_terms_path))
+    st.caption(
+        f"{include_count} términos positivos · {exclude_count} términos bloqueados · "
+        f"require_include_match={require_include_match}"
+    )
+
+
 def render_files(data_dir: Path) -> None:
     """Render generated files and download buttons."""
     st.subheader("Archivos generados")
@@ -184,6 +225,8 @@ def render_files(data_dir: Path) -> None:
         data_dir / "all_videos.csv",
         data_dir / "youtube_trends.db",
         data_dir / "keywords.txt",
+        data_dir / "include_terms.txt",
+        data_dir / "exclude_terms.txt",
     ]
 
     for file_path in files:

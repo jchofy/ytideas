@@ -8,6 +8,7 @@ from collections import OrderedDict
 
 from app.analysis import build_videos_dataframe
 from app.config import Settings, get_settings, read_keywords
+from app.content_filter import ContentRules, classify_video, load_content_rules
 from app.database import Database
 from app.exporter import export_csvs, print_report
 from app.logger import configure_logging
@@ -41,6 +42,7 @@ def main() -> None:
 def run_pipeline(settings: Settings, database: Database) -> None:
     """Run the complete data collection and ranking pipeline."""
     keywords = read_keywords(settings.keywords_path)
+    content_rules = load_content_rules(settings)
     client = YouTubeClient(settings.youtube_api_key)
 
     discovered_video_keywords: OrderedDict[str, str] = OrderedDict()
@@ -81,6 +83,7 @@ def run_pipeline(settings: Settings, database: Database) -> None:
             allowed_details, excluded_video_ids = filter_allowed_videos(
                 details,
                 min_duration_seconds=settings.min_video_duration_seconds,
+                content_rules=content_rules,
             )
             deleted_count = database.delete_videos(excluded_video_ids)
             if excluded_video_ids:
@@ -120,6 +123,7 @@ def report_current_data(database: Database) -> None:
 def filter_allowed_videos(
     videos: list[VideoDetails],
     min_duration_seconds: int,
+    content_rules: ContentRules | None = None,
 ) -> tuple[list[VideoDetails], list[str]]:
     """Split long-form videos from probable Shorts."""
     allowed: list[VideoDetails] = []
@@ -132,6 +136,12 @@ def filter_allowed_videos(
         if too_short or has_shorts_marker:
             excluded_video_ids.append(video.video_id)
             continue
+        if content_rules is not None:
+            is_allowed, reason, _relevance_score = classify_video(video, content_rules)
+            if not is_allowed:
+                LOGGER.info("Excluded video %s by editorial rules: %s", video.video_id, reason)
+                excluded_video_ids.append(video.video_id)
+                continue
         allowed.append(video)
 
     return allowed, excluded_video_ids

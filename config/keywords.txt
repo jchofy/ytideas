@@ -1,8 +1,15 @@
 # One keyword/query per line. Keep these in English for the US/anglosphere market.
-ai tools
-side hustles
-personal finance
-fitness transformation
-productivity tips
-healthy recipes
-travel hacks
+# Focus: tutorials, technology, AI tools, automation and practical workflows.
+ai tools tutorial
+chatgpt tutorial
+automation tutorial
+no code automation
+ai productivity tools
+best ai tools for business
+chatgpt prompts tutorial
+make.com automation tutorial
+zapier automation tutorial
+notion ai tutorial
+python automation tutorial
+excel ai tutorial
+ai workflow tutorial

@@ -20,6 +20,7 @@ class Settings:
     max_results_per_keyword: int = 25
     min_days_since_publish: int = 1
     min_video_duration_seconds: int = 181
+    require_include_match: bool = True
     default_keywords_path: Path = Path("config/keywords.txt")
 
 
@@ -46,6 +47,7 @@ def get_settings() -> Settings:
         max_results_per_keyword=int(os.getenv("MAX_RESULTS_PER_KEYWORD", "25")),
         min_days_since_publish=int(os.getenv("MIN_DAYS_SINCE_PUBLISH", "1")),
         min_video_duration_seconds=int(os.getenv("MIN_VIDEO_DURATION_SECONDS", "181")),
+        require_include_match=os.getenv("REQUIRE_INCLUDE_MATCH", "true").lower() in {"1", "true", "yes"},
         default_keywords_path=default_keywords_path,
     )
 

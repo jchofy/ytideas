@@ -7,6 +7,7 @@ Usa únicamente la YouTube Data API v3 oficial. No hace scraping, no requiere lo
 ## Qué incluye
 
 - Panel web con Streamlit para ver oportunidades, vídeos, archivos y editar keywords.
+- Filtros editoriales editables para bloquear ideas inviables y orientar el nicho.
 - CLI para ejecución manual o cron: `python -m app run`, `python -m app export`, `python -m app report`.
 - Descubrimiento con `search.list`.
 - Actualización de métricas con `videos.list` en batches de hasta 50 IDs.
@@ -33,8 +34,10 @@ La app guarda datos en `DATA_DIR`, por defecto `/app/data`:
 - `/app/data/top_opportunities.csv`
 - `/app/data/all_videos.csv`
 - `/app/data/keywords.txt`
+- `/app/data/include_terms.txt`
+- `/app/data/exclude_terms.txt`
 
-`config/keywords.txt` se usa como seed inicial. Cuando editas keywords desde el panel, se guardan en `/app/data/keywords.txt` para sobrevivir redeploys.
+`config/keywords.txt`, `config/include_terms.txt` y `config/exclude_terms.txt` se usan como seed inicial. Cuando editas desde el panel, se guardan en `/app/data` para sobrevivir redeploys.
 
 ## Estructura
 
@@ -51,6 +54,8 @@ app/
   logger.py
 config/
   keywords.txt
+  include_terms.txt
+  exclude_terms.txt
 data/
   .gitkeep
 Dockerfile
@@ -115,6 +120,7 @@ python -m app report
 | `YOUTUBE_RELEVANCE_LANGUAGE` | No | `en` | Idioma de relevancia de búsqueda. |
 | `MAX_RESULTS_PER_KEYWORD` | No | `25` | Resultados por keyword, máximo efectivo 50. |
 | `MIN_VIDEO_DURATION_SECONDS` | No | `181` | Excluye Shorts y vídeos cortos. YouTube Shorts puede llegar a 3 minutos, por eso el default es 181. |
+| `REQUIRE_INCLUDE_MATCH` | No | `true` | Si es `true`, solo guarda vídeos que contengan algún término positivo. |
 | `KEYWORDS_PATH` | No | Auto | Ruta del fichero de keywords. Si no se define, usa `/app/data/keywords.txt` cuando existe. |
 
 No incluyas claves en el código ni en la imagen Docker.
@@ -181,6 +187,7 @@ YOUTUBE_REGION_CODE=US
 YOUTUBE_RELEVANCE_LANGUAGE=en
 MAX_RESULTS_PER_KEYWORD=25
 MIN_VIDEO_DURATION_SECONDS=181
+REQUIRE_INCLUDE_MATCH=true
 ```
 
 Recomendación: `YOUTUBE_API_KEY` no necesita ser build variable. Debe existir en runtime.
@@ -236,6 +243,7 @@ En el panel puedes:
 - Buscar por título, canal, keyword o URL.
 - Ver todos los vídeos trackeados.
 - Editar keywords desde la pestaña `Keywords`.
+- Editar términos positivos y bloqueados desde la pestaña `Filtros`.
 - Ejecutar el radar manualmente con `Ejecutar radar ahora`.
 - Descargar CSVs desde la pestaña `Archivos`.
 
@@ -254,5 +262,6 @@ Aun así, `search.list` tiene coste alto de cuota. Ajusta `MAX_RESULTS_PER_KEYWO
 - El panel puede abrir sin API key, pero no podrá ejecutar el radar.
 - Si el cron falla por cuota, el panel seguirá mostrando los últimos datos guardados.
 - Las keywords editadas desde el panel viven en `/app/data/keywords.txt`, no en `config/keywords.txt`.
+- Los filtros editados desde el panel viven en `/app/data/include_terms.txt` y `/app/data/exclude_terms.txt`.
 - El filtro anti-Shorts usa `MIN_VIDEO_DURATION_SECONDS=181` por defecto porque YouTube puede clasificar Shorts de hasta 3 minutos.
 - Para resetear datos, borra el contenido del volumen persistente con cuidado.

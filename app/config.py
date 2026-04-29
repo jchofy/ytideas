@@ -18,6 +18,7 @@ class Settings:
     region_code: str = "US"
     relevance_language: str = "en"
     max_results_per_keyword: int = 25
+    keyword_batch_size: int = 8
     min_days_since_publish: int = 1
     min_video_duration_seconds: int = 181
     require_include_match: bool = True
@@ -45,6 +46,7 @@ def get_settings() -> Settings:
         region_code=os.getenv("YOUTUBE_REGION_CODE", "US"),
         relevance_language=os.getenv("YOUTUBE_RELEVANCE_LANGUAGE", "en"),
         max_results_per_keyword=int(os.getenv("MAX_RESULTS_PER_KEYWORD", "25")),
+        keyword_batch_size=int(os.getenv("KEYWORD_BATCH_SIZE", "8")),
         min_days_since_publish=int(os.getenv("MIN_DAYS_SINCE_PUBLISH", "1")),
         min_video_duration_seconds=int(os.getenv("MIN_VIDEO_DURATION_SECONDS", "181")),
         require_include_match=os.getenv("REQUIRE_INCLUDE_MATCH", "true").lower() in {"1", "true", "yes"},

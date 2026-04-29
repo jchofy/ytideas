@@ -11,6 +11,7 @@ from app.config import Settings, get_settings, read_keywords
 from app.content_filter import ContentRules, classify_video, load_content_rules
 from app.database import Database
 from app.exporter import export_csvs, print_report
+from app.keyword_rotation import select_keyword_batch
 from app.logger import configure_logging
 from app.youtube_api import VideoDetails, YouTubeAPIError, YouTubeClient
 
@@ -41,11 +42,23 @@ def main() -> None:
 
 def run_pipeline(settings: Settings, database: Database) -> None:
     """Run the complete data collection and ranking pipeline."""
-    keywords = read_keywords(settings.keywords_path)
+    all_keywords = read_keywords(settings.keywords_path)
+    keywords = select_keyword_batch(
+        all_keywords,
+        batch_size=settings.keyword_batch_size,
+        cursor_path=settings.data_dir / "keyword_cursor.txt",
+    )
     content_rules = load_content_rules(settings)
     client = YouTubeClient(settings.youtube_api_key)
+    LOGGER.info(
+        "Using %s/%s keywords this run: %s",
+        len(keywords),
+        len(all_keywords),
+        ", ".join(keywords),
+    )
 
     discovered_video_keywords: OrderedDict[str, str] = OrderedDict()
+    quota_exhausted = False
     for keyword in keywords:
         try:
             search_results = client.search_videos(
@@ -54,7 +67,11 @@ def run_pipeline(settings: Settings, database: Database) -> None:
                 relevance_language=settings.relevance_language,
                 max_results=settings.max_results_per_keyword,
             )
-        except YouTubeAPIError:
+        except YouTubeAPIError as exc:
+            if exc.is_quota_error:
+                quota_exhausted = True
+                LOGGER.error("YouTube quota exhausted while searching keyword '%s'. Stopping searches.", keyword)
+                break
             LOGGER.exception("Skipping keyword after YouTube API error: %s", keyword)
             continue
 
@@ -77,28 +94,45 @@ def run_pipeline(settings: Settings, database: Database) -> None:
     if ids_to_update:
         try:
             details = client.get_video_details(ids_to_update)
-        except YouTubeAPIError:
-            LOGGER.exception("Could not update video metrics after YouTube API error")
+        except YouTubeAPIError as exc:
+            if exc.is_quota_error:
+                quota_exhausted = True
+                LOGGER.error("YouTube quota exhausted while updating video metrics.")
+            else:
+                LOGGER.exception("Could not update video metrics after YouTube API error")
         else:
             allowed_details, excluded_video_ids = filter_allowed_videos(
                 details,
                 min_duration_seconds=settings.min_video_duration_seconds,
                 content_rules=content_rules,
             )
-            channel_details = client.get_channel_details(
-                [video.channel_id for video in allowed_details if video.channel_id]
-            )
+            try:
+                channel_details = client.get_channel_details(
+                    [video.channel_id for video in allowed_details if video.channel_id]
+                )
+            except YouTubeAPIError as exc:
+                channel_details = {}
+                if exc.is_quota_error:
+                    quota_exhausted = True
+                    LOGGER.error("YouTube quota exhausted while updating channel metrics.")
+                else:
+                    LOGGER.exception("Could not update channel metrics after YouTube API error")
             deleted_count = database.delete_videos(excluded_video_ids)
             if excluded_video_ids:
                 LOGGER.info(
-                    "Excluded %s short-form videos under %s seconds (%s deleted from DB).",
+                    "Excluded %s short-form/editorially filtered videos (%s deleted from DB).",
                     len(excluded_video_ids),
-                    settings.min_video_duration_seconds,
                     deleted_count,
                 )
             database.upsert_videos(allowed_details, discovered_video_keywords, channel_details)
     else:
         LOGGER.info("No videos to update")
+
+    if quota_exhausted:
+        LOGGER.warning(
+            "YouTube quota is exhausted. Existing data will still be snapshotted/exported; "
+            "new API calls should resume after the daily quota reset."
+        )
 
     database.create_daily_snapshot()
     export_current_data(settings=settings, database=database)

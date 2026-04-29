@@ -77,6 +77,7 @@ def render_sidebar(settings: object, database: Database) -> None:
     st.sidebar.write(f"API key: {'configurada' if api_key_configured else 'no configurada'}")
     st.sidebar.write(f"Datos: `{settings.data_dir}`")
     st.sidebar.write(f"Keywords: `{settings.keywords_path}`")
+    st.sidebar.write(f"Keywords por ejecución: `{settings.keyword_batch_size}`")
     st.sidebar.write(f"Duración mínima: `{settings.min_video_duration_seconds}s`")
 
     if st.sidebar.button("Ejecutar radar ahora", type="primary", disabled=not api_key_configured):

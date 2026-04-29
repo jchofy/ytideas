@@ -20,6 +20,15 @@ YOUTUBE_DURATION_PATTERN = re.compile(
 class YouTubeAPIError(RuntimeError):
     """Raised when the YouTube API returns an error."""
 
+    def __init__(self, message: str, reason: str = "unknown") -> None:
+        super().__init__(message)
+        self.reason = reason
+
+    @property
+    def is_quota_error(self) -> bool:
+        """Return whether the API error means daily quota is exhausted."""
+        return self.reason in {"quotaExceeded", "dailyLimitExceeded"}
+
 
 @dataclass(frozen=True)
 class SearchVideo:
@@ -161,8 +170,14 @@ class YouTubeClient:
             message = response.text
 
         if response.status_code in {403, 429} or reason in {"quotaExceeded", "dailyLimitExceeded"}:
-            raise YouTubeAPIError(f"YouTube quota/API limit error ({reason}): {message}")
-        raise YouTubeAPIError(f"YouTube API error {response.status_code} ({reason}): {message}")
+            raise YouTubeAPIError(
+                f"YouTube quota/API limit error ({reason}): {message}",
+                reason=reason,
+            )
+        raise YouTubeAPIError(
+            f"YouTube API error {response.status_code} ({reason}): {message}",
+            reason=reason,
+        )
 
     @staticmethod
     def _parse_video_details(item: dict[str, Any]) -> VideoDetails:

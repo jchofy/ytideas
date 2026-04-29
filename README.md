@@ -12,6 +12,7 @@ Usa únicamente la YouTube Data API v3 oficial. No hace scraping, no requiere lo
 - Descubrimiento con `search.list`.
 - Actualización de métricas con `videos.list` en batches de hasta 50 IDs.
 - Filtro anti-Shorts por duración mínima configurable.
+- Rotación de keywords por lotes para no agotar cuota diaria.
 - Cache de vídeos ya encontrados en SQLite.
 - Snapshots diarios.
 - Export automático a CSV.
@@ -39,6 +40,7 @@ La app guarda datos en `DATA_DIR`, por defecto `/app/data`:
 - `/app/data/keywords.txt`
 - `/app/data/include_terms.txt`
 - `/app/data/exclude_terms.txt`
+- `/app/data/keyword_cursor.txt`
 
 `config/keywords.txt`, `config/include_terms.txt` y `config/exclude_terms.txt` se usan como seed inicial. Cuando editas desde el panel, se guardan en `/app/data` para sobrevivir redeploys.
 
@@ -122,6 +124,7 @@ python -m app report
 | `YOUTUBE_REGION_CODE` | No | `US` | Mercado objetivo para búsquedas. |
 | `YOUTUBE_RELEVANCE_LANGUAGE` | No | `en` | Idioma de relevancia de búsqueda. |
 | `MAX_RESULTS_PER_KEYWORD` | No | `25` | Resultados por keyword, máximo efectivo 50. |
+| `KEYWORD_BATCH_SIZE` | No | `8` | Número de keywords consultadas por ejecución. Reduce el gasto de `search.list`. |
 | `MIN_VIDEO_DURATION_SECONDS` | No | `181` | Excluye Shorts y vídeos cortos. YouTube Shorts puede llegar a 3 minutos, por eso el default es 181. |
 | `REQUIRE_INCLUDE_MATCH` | No | `true` | Si es `true`, solo guarda vídeos que contengan algún término positivo. |
 | `KEYWORDS_PATH` | No | Auto | Ruta del fichero de keywords. Si no se define, usa `/app/data/keywords.txt` cuando existe. |
@@ -189,6 +192,7 @@ DATA_DIR=/app/data
 YOUTUBE_REGION_CODE=US
 YOUTUBE_RELEVANCE_LANGUAGE=en
 MAX_RESULTS_PER_KEYWORD=25
+KEYWORD_BATCH_SIZE=8
 MIN_VIDEO_DURATION_SECONDS=181
 REQUIRE_INCLUDE_MATCH=true
 ```
@@ -230,13 +234,14 @@ Schedule recomendado:
 Ese job ejecuta cada día:
 
 1. Lee keywords.
-2. Busca vídeos nuevos.
-3. Actualiza métricas de vídeos existentes.
-4. Actualiza métricas de canal con `channels.list`.
-5. Excluye Shorts/vídeos cortos por debajo de `MIN_VIDEO_DURATION_SECONDS`.
-6. Prioriza vídeos que rinden mucho en canales pequeños.
-7. Guarda snapshot diario.
-8. Regenera `top_opportunities.csv` y `all_videos.csv`.
+2. Selecciona un lote rotativo de `KEYWORD_BATCH_SIZE`.
+3. Busca vídeos nuevos.
+4. Actualiza métricas de vídeos existentes.
+5. Actualiza métricas de canal con `channels.list`.
+6. Excluye Shorts/vídeos cortos por debajo de `MIN_VIDEO_DURATION_SECONDS`.
+7. Prioriza vídeos que rinden mucho en canales pequeños.
+8. Guarda snapshot diario.
+9. Regenera `top_opportunities.csv` y `all_videos.csv`.
 
 Asegúrate de que la scheduled task usa las mismas variables de entorno y el mismo volumen `/app/data`.
 
@@ -256,12 +261,14 @@ En el panel puedes:
 
 El pipeline minimiza consumo así:
 
-- `search.list`: solo descubre IDs por keyword.
+- `search.list`: solo descubre IDs por keyword, limitado por `KEYWORD_BATCH_SIZE`.
 - `videos.list`: obtiene/actualiza métricas en batches de hasta 50 vídeos.
 - `channels.list`: obtiene estadísticas de canal en batches de hasta 50 canales para detectar oportunidades en canales pequeños.
 - SQLite evita tratar como nuevos vídeos ya encontrados.
 
-Aun así, `search.list` tiene coste alto de cuota. Ajusta `MAX_RESULTS_PER_KEYWORD` y el número de keywords según tu cuota diaria.
+Aun así, `search.list` tiene coste alto de cuota. Ajusta `KEYWORD_BATCH_SIZE` y el número de keywords según tu cuota diaria.
+
+En la cuota estándar de YouTube Data API, `search.list` cuesta 100 unidades por llamada y la cuota diaria suele ser 10.000 unidades. Por eso el ajuste más importante es `KEYWORD_BATCH_SIZE`, no `MAX_RESULTS_PER_KEYWORD`.
 
 ## Notas operativas
 
@@ -269,5 +276,6 @@ Aun así, `search.list` tiene coste alto de cuota. Ajusta `MAX_RESULTS_PER_KEYWO
 - Si el cron falla por cuota, el panel seguirá mostrando los últimos datos guardados.
 - Las keywords editadas desde el panel viven en `/app/data/keywords.txt`, no en `config/keywords.txt`.
 - Los filtros editados desde el panel viven en `/app/data/include_terms.txt` y `/app/data/exclude_terms.txt`.
+- La rotación de keywords vive en `/app/data/keyword_cursor.txt`.
 - El filtro anti-Shorts usa `MIN_VIDEO_DURATION_SECONDS=181` por defecto porque YouTube puede clasificar Shorts de hasta 3 minutos.
 - Para resetear datos, borra el contenido del volumen persistente con cuidado.

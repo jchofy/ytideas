@@ -41,6 +41,7 @@ class Database:
                     tags TEXT NOT NULL,
                     category_id TEXT NOT NULL,
                     duration TEXT NOT NULL,
+                    duration_seconds INTEGER NOT NULL DEFAULT 0,
                     first_seen_at TEXT NOT NULL,
                     last_seen_at TEXT NOT NULL,
                     last_keyword TEXT NOT NULL,
@@ -73,6 +74,18 @@ class Database:
                 ON metric_snapshots(video_id, snapshot_date);
                 """
             )
+            self._ensure_column(connection, "videos", "duration_seconds", "INTEGER NOT NULL DEFAULT 0")
+
+    @staticmethod
+    def _ensure_column(
+        connection: sqlite3.Connection,
+        table_name: str,
+        column_name: str,
+        column_definition: str,
+    ) -> None:
+        columns = connection.execute(f"PRAGMA table_info({table_name})").fetchall()
+        if column_name not in {column["name"] for column in columns}:
+            connection.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_definition}")
 
     def get_known_video_ids(self, video_ids: Iterable[str] | None = None) -> set[str]:
         """Return known IDs, optionally constrained to a candidate list."""
@@ -100,9 +113,9 @@ class Database:
                     """
                     INSERT INTO videos (
                         video_id, title, channel_id, channel_title, published_at, url,
-                        description, tags, category_id, duration, first_seen_at, last_seen_at,
+                        description, tags, category_id, duration, duration_seconds, first_seen_at, last_seen_at,
                         last_keyword, view_count, like_count, comment_count
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(video_id) DO UPDATE SET
                         title = excluded.title,
                         channel_id = excluded.channel_id,
@@ -113,6 +126,7 @@ class Database:
                         tags = excluded.tags,
                         category_id = excluded.category_id,
                         duration = excluded.duration,
+                        duration_seconds = excluded.duration_seconds,
                         last_seen_at = excluded.last_seen_at,
                         last_keyword = excluded.last_keyword,
                         view_count = excluded.view_count,
@@ -130,6 +144,7 @@ class Database:
                         video.tags,
                         video.category_id,
                         video.duration,
+                        video.duration_seconds,
                         now,
                         now,
                         keyword,
@@ -146,6 +161,28 @@ class Database:
                         """,
                         (video.video_id, keyword, now),
                     )
+
+    def delete_videos(self, video_ids: Iterable[str]) -> int:
+        """Delete videos and dependent records by ID."""
+        candidates = list(dict.fromkeys(video_ids))
+        if not candidates:
+            return 0
+
+        placeholders = ",".join("?" for _ in candidates)
+        with self.connect() as connection:
+            connection.execute(
+                f"DELETE FROM metric_snapshots WHERE video_id IN ({placeholders})",
+                candidates,
+            )
+            connection.execute(
+                f"DELETE FROM video_keywords WHERE video_id IN ({placeholders})",
+                candidates,
+            )
+            cursor = connection.execute(
+                f"DELETE FROM videos WHERE video_id IN ({placeholders})",
+                candidates,
+            )
+            return cursor.rowcount
 
     def get_all_video_ids(self) -> list[str]:
         """Return all tracked video IDs."""
@@ -197,7 +234,7 @@ class Database:
                 ],
             )
 
-    def fetch_analysis_rows(self) -> list[sqlite3.Row]:
+    def fetch_analysis_rows(self, min_duration_seconds: int = 0) -> list[sqlite3.Row]:
         """Fetch denormalized rows for analysis/export."""
         with self.connect() as connection:
             return connection.execute(
@@ -223,6 +260,8 @@ class Database:
                 FROM videos v
                 LEFT JOIN latest_snapshot s ON s.video_id = v.video_id
                 LEFT JOIN keyword_rollup k ON k.video_id = v.video_id
+                WHERE COALESCE(v.duration_seconds, 0) >= ?
                 ORDER BY v.view_count DESC
-                """
+                """,
+                (min_duration_seconds,),
             ).fetchall()

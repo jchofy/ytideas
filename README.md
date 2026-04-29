@@ -10,6 +10,7 @@ Usa únicamente la YouTube Data API v3 oficial. No hace scraping, no requiere lo
 - CLI para ejecución manual o cron: `python -m app run`, `python -m app export`, `python -m app report`.
 - Descubrimiento con `search.list`.
 - Actualización de métricas con `videos.list` en batches de hasta 50 IDs.
+- Filtro anti-Shorts por duración mínima configurable.
 - Cache de vídeos ya encontrados en SQLite.
 - Snapshots diarios.
 - Export automático a CSV.
@@ -113,6 +114,7 @@ python -m app report
 | `YOUTUBE_REGION_CODE` | No | `US` | Mercado objetivo para búsquedas. |
 | `YOUTUBE_RELEVANCE_LANGUAGE` | No | `en` | Idioma de relevancia de búsqueda. |
 | `MAX_RESULTS_PER_KEYWORD` | No | `25` | Resultados por keyword, máximo efectivo 50. |
+| `MIN_VIDEO_DURATION_SECONDS` | No | `181` | Excluye Shorts y vídeos cortos. YouTube Shorts puede llegar a 3 minutos, por eso el default es 181. |
 | `KEYWORDS_PATH` | No | Auto | Ruta del fichero de keywords. Si no se define, usa `/app/data/keywords.txt` cuando existe. |
 
 No incluyas claves en el código ni en la imagen Docker.
@@ -178,6 +180,7 @@ DATA_DIR=/app/data
 YOUTUBE_REGION_CODE=US
 YOUTUBE_RELEVANCE_LANGUAGE=en
 MAX_RESULTS_PER_KEYWORD=25
+MIN_VIDEO_DURATION_SECONDS=181
 ```
 
 Recomendación: `YOUTUBE_API_KEY` no necesita ser build variable. Debe existir en runtime.
@@ -219,8 +222,9 @@ Ese job ejecuta cada día:
 1. Lee keywords.
 2. Busca vídeos nuevos.
 3. Actualiza métricas de vídeos existentes.
-4. Guarda snapshot diario.
-5. Regenera `top_opportunities.csv` y `all_videos.csv`.
+4. Excluye Shorts/vídeos cortos por debajo de `MIN_VIDEO_DURATION_SECONDS`.
+5. Guarda snapshot diario.
+6. Regenera `top_opportunities.csv` y `all_videos.csv`.
 
 Asegúrate de que la scheduled task usa las mismas variables de entorno y el mismo volumen `/app/data`.
 
@@ -250,4 +254,5 @@ Aun así, `search.list` tiene coste alto de cuota. Ajusta `MAX_RESULTS_PER_KEYWO
 - El panel puede abrir sin API key, pero no podrá ejecutar el radar.
 - Si el cron falla por cuota, el panel seguirá mostrando los últimos datos guardados.
 - Las keywords editadas desde el panel viven en `/app/data/keywords.txt`, no en `config/keywords.txt`.
+- El filtro anti-Shorts usa `MIN_VIDEO_DURATION_SECONDS=181` por defecto porque YouTube puede clasificar Shorts de hasta 3 minutos.
 - Para resetear datos, borra el contenido del volumen persistente con cuidado.

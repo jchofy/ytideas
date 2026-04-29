@@ -19,6 +19,7 @@ class Settings:
     relevance_language: str = "en"
     max_results_per_keyword: int = 25
     min_days_since_publish: int = 1
+    min_video_duration_seconds: int = 181
     default_keywords_path: Path = Path("config/keywords.txt")
 
 
@@ -44,6 +45,7 @@ def get_settings() -> Settings:
         relevance_language=os.getenv("YOUTUBE_RELEVANCE_LANGUAGE", "en"),
         max_results_per_keyword=int(os.getenv("MAX_RESULTS_PER_KEYWORD", "25")),
         min_days_since_publish=int(os.getenv("MIN_DAYS_SINCE_PUBLISH", "1")),
+        min_video_duration_seconds=int(os.getenv("MIN_VIDEO_DURATION_SECONDS", "181")),
         default_keywords_path=default_keywords_path,
     )
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -11,6 +12,9 @@ import requests
 
 LOGGER = logging.getLogger(__name__)
 YOUTUBE_API_BASE_URL = "https://www.googleapis.com/youtube/v3"
+YOUTUBE_DURATION_PATTERN = re.compile(
+    r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?(?:(?P<seconds>\d+)S)?)?$"
+)
 
 
 class YouTubeAPIError(RuntimeError):
@@ -39,6 +43,7 @@ class VideoDetails:
     tags: str
     category_id: str
     duration: str
+    duration_seconds: int
     view_count: int
     like_count: int
     comment_count: int
@@ -151,7 +156,23 @@ class YouTubeClient:
             tags=", ".join(snippet.get("tags", [])),
             category_id=snippet.get("categoryId", ""),
             duration=content_details.get("duration", ""),
+            duration_seconds=parse_iso8601_duration(content_details.get("duration", "")),
             view_count=int(statistics.get("viewCount", 0)),
             like_count=int(statistics.get("likeCount", 0)),
             comment_count=int(statistics.get("commentCount", 0)),
         )
+
+
+def parse_iso8601_duration(duration: str) -> int:
+    """Parse a YouTube ISO 8601 duration string into seconds."""
+    match = YOUTUBE_DURATION_PATTERN.match(duration or "")
+    if not match:
+        return 0
+
+    parts = {key: int(value or 0) for key, value in match.groupdict().items()}
+    return (
+        parts["days"] * 86_400
+        + parts["hours"] * 3_600
+        + parts["minutes"] * 60
+        + parts["seconds"]
+    )

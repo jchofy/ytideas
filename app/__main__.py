@@ -11,7 +11,7 @@ from app.config import Settings, get_settings, read_keywords
 from app.database import Database
 from app.exporter import export_csvs, print_report
 from app.logger import configure_logging
-from app.youtube_api import YouTubeAPIError, YouTubeClient
+from app.youtube_api import VideoDetails, YouTubeAPIError, YouTubeClient
 
 LOGGER = logging.getLogger(__name__)
 
@@ -78,7 +78,19 @@ def run_pipeline(settings: Settings, database: Database) -> None:
         except YouTubeAPIError:
             LOGGER.exception("Could not update video metrics after YouTube API error")
         else:
-            database.upsert_videos(details, discovered_video_keywords)
+            allowed_details, excluded_video_ids = filter_allowed_videos(
+                details,
+                min_duration_seconds=settings.min_video_duration_seconds,
+            )
+            deleted_count = database.delete_videos(excluded_video_ids)
+            if excluded_video_ids:
+                LOGGER.info(
+                    "Excluded %s short-form videos under %s seconds (%s deleted from DB).",
+                    len(excluded_video_ids),
+                    settings.min_video_duration_seconds,
+                    deleted_count,
+                )
+            database.upsert_videos(allowed_details, discovered_video_keywords)
     else:
         LOGGER.info("No videos to update")
 
@@ -88,7 +100,9 @@ def run_pipeline(settings: Settings, database: Database) -> None:
 
 def export_current_data(settings: Settings, database: Database) -> None:
     """Export current database contents to CSV files."""
-    dataframe = build_videos_dataframe(database.fetch_analysis_rows())
+    dataframe = build_videos_dataframe(
+        database.fetch_analysis_rows(min_duration_seconds=settings.min_video_duration_seconds)
+    )
     top_path, all_path = export_csvs(dataframe, settings.data_dir)
     LOGGER.info("Exported top opportunities: %s", top_path)
     LOGGER.info("Exported all videos: %s", all_path)
@@ -96,8 +110,31 @@ def export_current_data(settings: Settings, database: Database) -> None:
 
 def report_current_data(database: Database) -> None:
     """Print current top opportunities."""
-    dataframe = build_videos_dataframe(database.fetch_analysis_rows())
+    settings = get_settings()
+    dataframe = build_videos_dataframe(
+        database.fetch_analysis_rows(min_duration_seconds=settings.min_video_duration_seconds)
+    )
     print_report(dataframe)
+
+
+def filter_allowed_videos(
+    videos: list[VideoDetails],
+    min_duration_seconds: int,
+) -> tuple[list[VideoDetails], list[str]]:
+    """Split long-form videos from probable Shorts."""
+    allowed: list[VideoDetails] = []
+    excluded_video_ids: list[str] = []
+
+    for video in videos:
+        text = f"{video.title} {video.description} {video.tags}".lower()
+        has_shorts_marker = "#shorts" in text
+        too_short = video.duration_seconds < min_duration_seconds
+        if too_short or has_shorts_marker:
+            excluded_video_ids.append(video.video_id)
+            continue
+        allowed.append(video)
+
+    return allowed, excluded_video_ids
 
 
 if __name__ == "__main__":

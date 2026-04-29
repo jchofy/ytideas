@@ -13,6 +13,7 @@ EXPORT_COLUMNS = [
     "url",
     "keywords",
     "published_at",
+    "duration_seconds",
     "days_since_publish",
     "view_count",
     "views_per_day",

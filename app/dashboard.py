@@ -43,7 +43,7 @@ def main() -> None:
 
     render_sidebar(settings=settings, database=database)
 
-    dataframe = load_ranked_dataframe(str(settings.database_path))
+    dataframe = load_ranked_dataframe(str(settings.database_path), settings.min_video_duration_seconds)
     top_dataframe = dataframe.head(TOP_LIMIT)
 
     render_summary(settings=settings, dataframe=dataframe)
@@ -72,6 +72,7 @@ def render_sidebar(settings: object, database: Database) -> None:
     st.sidebar.write(f"API key: {'configurada' if api_key_configured else 'no configurada'}")
     st.sidebar.write(f"Datos: `{settings.data_dir}`")
     st.sidebar.write(f"Keywords: `{settings.keywords_path}`")
+    st.sidebar.write(f"Duración mínima: `{settings.min_video_duration_seconds}s`")
 
     if st.sidebar.button("Ejecutar radar ahora", type="primary", disabled=not api_key_configured):
         with st.spinner("Consultando YouTube API y actualizando métricas..."):
@@ -201,11 +202,11 @@ def render_files(data_dir: Path) -> None:
 
 
 @st.cache_data(ttl=30)
-def load_ranked_dataframe(database_path: str) -> pd.DataFrame:
+def load_ranked_dataframe(database_path: str, min_duration_seconds: int) -> pd.DataFrame:
     """Load ranked data from SQLite."""
     database = Database(Path(database_path))
     database.initialize()
-    return build_videos_dataframe(database.fetch_analysis_rows())
+    return build_videos_dataframe(database.fetch_analysis_rows(min_duration_seconds=min_duration_seconds))
 
 
 def filter_dataframe(dataframe: pd.DataFrame, search: str) -> pd.DataFrame:

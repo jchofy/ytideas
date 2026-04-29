@@ -6,7 +6,7 @@ Usa únicamente la YouTube Data API v3 oficial. No hace scraping, no requiere lo
 
 ## Qué incluye
 
-- Panel web con Streamlit para ver oportunidades, vídeos, archivos y editar keywords.
+- Panel web móvil con Streamlit, tema oscuro, cards accesibles, filtros y ordenación.
 - Filtros editoriales editables para bloquear ideas inviables y orientar el nicho.
 - CLI para ejecución manual o cron: `python -m app run`, `python -m app export`, `python -m app report`.
 - Descubrimiento con `search.list`.
@@ -249,7 +249,9 @@ Asegúrate de que la scheduled task usa las mismas variables de entorno y el mis
 
 En el panel puedes:
 
-- Ver el ranking de oportunidades.
+- Ver el ranking de oportunidades en cards optimizadas para móvil.
+- Ordenar por score, canal pequeño, views/sub, views/día, crecimiento, recencia o menos suscriptores.
+- Filtrar por búsqueda, keyword, score mínimo y máximo de suscriptores.
 - Buscar por título, canal, keyword o URL.
 - Ver todos los vídeos trackeados.
 - Editar keywords desde la pestaña `Keywords`.

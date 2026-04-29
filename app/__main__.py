@@ -85,6 +85,9 @@ def run_pipeline(settings: Settings, database: Database) -> None:
                 min_duration_seconds=settings.min_video_duration_seconds,
                 content_rules=content_rules,
             )
+            channel_details = client.get_channel_details(
+                [video.channel_id for video in allowed_details if video.channel_id]
+            )
             deleted_count = database.delete_videos(excluded_video_ids)
             if excluded_video_ids:
                 LOGGER.info(
@@ -93,7 +96,7 @@ def run_pipeline(settings: Settings, database: Database) -> None:
                     settings.min_video_duration_seconds,
                     deleted_count,
                 )
-            database.upsert_videos(allowed_details, discovered_video_keywords)
+            database.upsert_videos(allowed_details, discovered_video_keywords, channel_details)
     else:
         LOGGER.info("No videos to update")
 

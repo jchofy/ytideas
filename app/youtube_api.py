@@ -49,6 +49,17 @@ class VideoDetails:
     comment_count: int
 
 
+@dataclass(frozen=True)
+class ChannelDetails:
+    """Normalized channel details from channels.list."""
+
+    channel_id: str
+    subscriber_count: int | None
+    hidden_subscriber_count: bool
+    channel_view_count: int
+    channel_video_count: int
+
+
 class YouTubeClient:
     """Small wrapper around YouTube Data API v3."""
 
@@ -100,6 +111,24 @@ class YouTubeClient:
             for item in data.get("items", []):
                 details.append(self._parse_video_details(item))
             LOGGER.info("Fetched details for %s videos", len(batch))
+        return details
+
+    def get_channel_details(self, channel_ids: list[str]) -> dict[str, ChannelDetails]:
+        """Fetch channel statistics in channels.list batches of up to 50 IDs."""
+        details: dict[str, ChannelDetails] = {}
+        unique_channel_ids = list(dict.fromkeys(channel_ids))
+        for index in range(0, len(unique_channel_ids), 50):
+            batch = unique_channel_ids[index : index + 50]
+            params = {
+                "part": "statistics",
+                "id": ",".join(batch),
+                "key": self.api_key,
+            }
+            data = self._get("channels", params)
+            for item in data.get("items", []):
+                channel = self._parse_channel_details(item)
+                details[channel.channel_id] = channel
+            LOGGER.info("Fetched channel details for %s channels", len(batch))
         return details
 
     def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -160,6 +189,19 @@ class YouTubeClient:
             view_count=int(statistics.get("viewCount", 0)),
             like_count=int(statistics.get("likeCount", 0)),
             comment_count=int(statistics.get("commentCount", 0)),
+        )
+
+    @staticmethod
+    def _parse_channel_details(item: dict[str, Any]) -> ChannelDetails:
+        statistics = item.get("statistics", {})
+        hidden_subscriber_count = bool(statistics.get("hiddenSubscriberCount", False))
+        subscriber_count = None if hidden_subscriber_count else int(statistics.get("subscriberCount", 0))
+        return ChannelDetails(
+            channel_id=item["id"],
+            subscriber_count=subscriber_count,
+            hidden_subscriber_count=hidden_subscriber_count,
+            channel_view_count=int(statistics.get("viewCount", 0)),
+            channel_video_count=int(statistics.get("videoCount", 0)),
         )
 
 

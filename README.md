@@ -22,9 +22,12 @@ Usa únicamente la YouTube Data API v3 oficial. No hace scraping, no requiere lo
 - `views_per_day`
 - `views_growth_24h`
 - `engagement_rate`
+- `subscriber_count`
+- `view_subscriber_ratio`
+- `small_channel_boost`
 - `opportunity_score`
 
-`opportunity_score` pondera velocidad de visualizaciones, crecimiento 24h, engagement y recencia.
+`opportunity_score` pondera velocidad de visualizaciones, crecimiento 24h, señales de canal pequeño con alto rendimiento, engagement y recencia.
 
 ## Archivos persistentes
 
@@ -229,9 +232,11 @@ Ese job ejecuta cada día:
 1. Lee keywords.
 2. Busca vídeos nuevos.
 3. Actualiza métricas de vídeos existentes.
-4. Excluye Shorts/vídeos cortos por debajo de `MIN_VIDEO_DURATION_SECONDS`.
-5. Guarda snapshot diario.
-6. Regenera `top_opportunities.csv` y `all_videos.csv`.
+4. Actualiza métricas de canal con `channels.list`.
+5. Excluye Shorts/vídeos cortos por debajo de `MIN_VIDEO_DURATION_SECONDS`.
+6. Prioriza vídeos que rinden mucho en canales pequeños.
+7. Guarda snapshot diario.
+8. Regenera `top_opportunities.csv` y `all_videos.csv`.
 
 Asegúrate de que la scheduled task usa las mismas variables de entorno y el mismo volumen `/app/data`.
 
@@ -253,6 +258,7 @@ El pipeline minimiza consumo así:
 
 - `search.list`: solo descubre IDs por keyword.
 - `videos.list`: obtiene/actualiza métricas en batches de hasta 50 vídeos.
+- `channels.list`: obtiene estadísticas de canal en batches de hasta 50 canales para detectar oportunidades en canales pequeños.
 - SQLite evita tratar como nuevos vídeos ya encontrados.
 
 Aun así, `search.list` tiene coste alto de cuota. Ajusta `MAX_RESULTS_PER_KEYWORD` y el número de keywords según tu cuota diaria.

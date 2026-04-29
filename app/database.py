@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from app.youtube_api import VideoDetails
+from app.youtube_api import ChannelDetails, VideoDetails
 
 
 class Database:
@@ -47,7 +47,11 @@ class Database:
                     last_keyword TEXT NOT NULL,
                     view_count INTEGER NOT NULL DEFAULT 0,
                     like_count INTEGER NOT NULL DEFAULT 0,
-                    comment_count INTEGER NOT NULL DEFAULT 0
+                    comment_count INTEGER NOT NULL DEFAULT 0,
+                    subscriber_count INTEGER,
+                    hidden_subscriber_count INTEGER NOT NULL DEFAULT 0,
+                    channel_view_count INTEGER NOT NULL DEFAULT 0,
+                    channel_video_count INTEGER NOT NULL DEFAULT 0
                 );
 
                 CREATE TABLE IF NOT EXISTS video_keywords (
@@ -75,6 +79,10 @@ class Database:
                 """
             )
             self._ensure_column(connection, "videos", "duration_seconds", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "videos", "subscriber_count", "INTEGER")
+            self._ensure_column(connection, "videos", "hidden_subscriber_count", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "videos", "channel_view_count", "INTEGER NOT NULL DEFAULT 0")
+            self._ensure_column(connection, "videos", "channel_video_count", "INTEGER NOT NULL DEFAULT 0")
 
     @staticmethod
     def _ensure_column(
@@ -103,19 +111,31 @@ class Database:
                 ).fetchall()
         return {row["video_id"] for row in rows}
 
-    def upsert_videos(self, videos: list[VideoDetails], keyword_by_video_id: dict[str, str]) -> None:
+    def upsert_videos(
+        self,
+        videos: list[VideoDetails],
+        keyword_by_video_id: dict[str, str],
+        channel_details_by_id: dict[str, ChannelDetails] | None = None,
+    ) -> None:
         """Insert or update videos and keyword associations."""
         now = datetime.now(UTC).isoformat()
+        channel_details_by_id = channel_details_by_id or {}
         with self.connect() as connection:
             for video in videos:
                 keyword = keyword_by_video_id.get(video.video_id, "")
+                channel_details = channel_details_by_id.get(video.channel_id)
+                subscriber_count = channel_details.subscriber_count if channel_details else None
+                hidden_subscriber_count = int(channel_details.hidden_subscriber_count) if channel_details else 0
+                channel_view_count = channel_details.channel_view_count if channel_details else 0
+                channel_video_count = channel_details.channel_video_count if channel_details else 0
                 connection.execute(
                     """
                     INSERT INTO videos (
                         video_id, title, channel_id, channel_title, published_at, url,
                         description, tags, category_id, duration, duration_seconds, first_seen_at, last_seen_at,
-                        last_keyword, view_count, like_count, comment_count
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        last_keyword, view_count, like_count, comment_count, subscriber_count,
+                        hidden_subscriber_count, channel_view_count, channel_video_count
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(video_id) DO UPDATE SET
                         title = excluded.title,
                         channel_id = excluded.channel_id,
@@ -131,7 +151,11 @@ class Database:
                         last_keyword = excluded.last_keyword,
                         view_count = excluded.view_count,
                         like_count = excluded.like_count,
-                        comment_count = excluded.comment_count
+                        comment_count = excluded.comment_count,
+                        subscriber_count = excluded.subscriber_count,
+                        hidden_subscriber_count = excluded.hidden_subscriber_count,
+                        channel_view_count = excluded.channel_view_count,
+                        channel_video_count = excluded.channel_video_count
                     """,
                     (
                         video.video_id,
@@ -151,6 +175,10 @@ class Database:
                         video.view_count,
                         video.like_count,
                         video.comment_count,
+                        subscriber_count,
+                        hidden_subscriber_count,
+                        channel_view_count,
+                        channel_video_count,
                     ),
                 )
                 if keyword:

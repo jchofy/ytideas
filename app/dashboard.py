@@ -6,6 +6,7 @@ import sys
 from dataclasses import replace
 from html import escape
 from pathlib import Path
+from textwrap import dedent
 
 import pandas as pd
 import streamlit as st
@@ -138,6 +139,12 @@ def inject_mobile_dark_theme() -> None:
             max-width: 100vw !important;
             overflow-x: hidden !important;
         }
+        header[data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        [data-testid="stDecoration"],
+        #MainMenu {
+            display: none !important;
+        }
         [data-testid="stSidebar"] {
             background: #111 !important;
             border-right: 1px solid var(--yt-border);
@@ -145,7 +152,7 @@ def inject_mobile_dark_theme() -> None:
         .block-container {
             width: 100% !important;
             max-width: min(980px, 100vw) !important;
-            padding-top: 1rem !important;
+            padding-top: max(18px, env(safe-area-inset-top)) !important;
             padding-right: max(14px, env(safe-area-inset-right)) !important;
             padding-bottom: 5rem !important;
             padding-left: max(14px, env(safe-area-inset-left)) !important;
@@ -182,6 +189,18 @@ def inject_mobile_dark_theme() -> None:
             border-radius: 14px !important;
             color: var(--yt-text) !important;
             min-height: 48px !important;
+        }
+        .stTextInput,
+        .stSelectbox,
+        .stSlider,
+        .stSegmentedControl,
+        div[data-baseweb="select"],
+        div[data-baseweb="input"] {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        div[data-baseweb="select"] > div {
+            width: 100% !important;
         }
         div[data-baseweb="input"]:focus-within,
         div[data-baseweb="select"] > div:focus-within,
@@ -454,6 +473,7 @@ def inject_mobile_dark_theme() -> None:
         }
         @media (max-width: 520px) {
             .block-container {
+                padding-top: max(18px, env(safe-area-inset-top)) !important;
                 padding-right: max(12px, env(safe-area-inset-right)) !important;
                 padding-left: max(12px, env(safe-area-inset-left)) !important;
             }
@@ -658,7 +678,8 @@ def render_video_card(row: dict[str, object], position: int) -> str:
     if 0 < subscriber_value <= 100_000:
         small_channel_badge = '<span class="ytr-badge ytr-badge-good">Canal pequeño</span>'
 
-    return f"""
+    return dedent(
+        f"""
     <article class="ytr-card" aria-label="Oportunidad {position}: {title}">
         <div class="ytr-card-top">
             <div>
@@ -688,6 +709,7 @@ def render_video_card(row: dict[str, object], position: int) -> str:
         </div>
     </article>
     """
+    ).strip()
 
 
 def render_empty_state(message: str) -> None:

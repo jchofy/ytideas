@@ -118,25 +118,137 @@ def inject_mobile_dark_theme() -> None:
             --yt-green: #22c55e;
             --yt-yellow: #facc15;
         }
+        html, body {
+            width: 100% !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            background: var(--yt-bg) !important;
+        }
+        * {
+            box-sizing: border-box;
+        }
         html, body, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             background: var(--yt-bg) !important;
             color: var(--yt-text) !important;
+        }
+        [data-testid="stAppViewContainer"],
+        [data-testid="stMain"],
+        [data-testid="stMainBlockContainer"],
+        section.main {
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
         }
         [data-testid="stSidebar"] {
             background: #111 !important;
             border-right: 1px solid var(--yt-border);
         }
         .block-container {
-            padding: 1rem 1rem 5rem !important;
-            max-width: 980px !important;
+            width: 100% !important;
+            max-width: min(980px, 100vw) !important;
+            padding-top: 1rem !important;
+            padding-right: max(14px, env(safe-area-inset-right)) !important;
+            padding-bottom: 5rem !important;
+            padding-left: max(14px, env(safe-area-inset-left)) !important;
+        }
+        [data-testid="stVerticalBlock"],
+        [data-testid="stHorizontalBlock"] {
+            max-width: 100% !important;
+        }
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            background: var(--yt-surface) !important;
+            border: 1px solid var(--yt-border) !important;
+            border-radius: 18px !important;
+            padding: .8rem !important;
+            max-width: 100% !important;
+            overflow: visible !important;
         }
         h1, h2, h3, p, label, span, div {
             color: var(--yt-text);
         }
+        [data-testid="stWidgetLabel"] p,
+        [data-testid="stWidgetLabel"] label,
+        label,
+        .stSlider p,
+        .stSelectbox p,
+        .stTextInput p {
+            color: var(--yt-text) !important;
+            font-weight: 650 !important;
+        }
+        div[data-baseweb="input"],
+        div[data-baseweb="select"] > div,
+        textarea {
+            background: var(--yt-surface) !important;
+            border: 1px solid var(--yt-border) !important;
+            border-radius: 14px !important;
+            color: var(--yt-text) !important;
+            min-height: 48px !important;
+        }
+        div[data-baseweb="input"]:focus-within,
+        div[data-baseweb="select"] > div:focus-within,
+        textarea:focus {
+            border-color: rgba(255,255,255,.5) !important;
+            box-shadow: 0 0 0 2px rgba(255,0,51,.2) !important;
+        }
+        input,
+        textarea,
+        div[data-baseweb="select"] span,
+        div[data-baseweb="select"] svg {
+            color: var(--yt-text) !important;
+            fill: var(--yt-text) !important;
+        }
+        input::placeholder,
+        textarea::placeholder {
+            color: #777 !important;
+            opacity: 1 !important;
+        }
+        div[data-baseweb="popover"] {
+            background: transparent !important;
+            max-width: calc(100vw - 28px) !important;
+            z-index: 999999 !important;
+        }
+        div[data-baseweb="popover"] > div,
+        div[data-baseweb="menu"],
+        ul[role="listbox"] {
+            background: #181818 !important;
+            border: 1px solid #3a3a3a !important;
+            border-radius: 16px !important;
+            box-shadow: 0 18px 50px rgba(0,0,0,.65) !important;
+            max-width: calc(100vw - 28px) !important;
+            width: min(520px, calc(100vw - 28px)) !important;
+            overflow-x: hidden !important;
+        }
+        li[role="option"],
+        div[role="option"] {
+            background: #181818 !important;
+            color: var(--yt-text) !important;
+            min-height: 44px !important;
+        }
+        li[role="option"] *,
+        div[role="option"] * {
+            color: var(--yt-text) !important;
+        }
+        li[role="option"]:hover,
+        div[role="option"]:hover,
+        li[aria-selected="true"],
+        div[aria-selected="true"] {
+            background: #2a2a2a !important;
+        }
+        [data-testid="stSlider"] {
+            max-width: 100% !important;
+        }
+        [data-testid="stSlider"] div {
+            color: var(--yt-text) !important;
+        }
         .stTabs [data-baseweb="tab-list"] {
             gap: .35rem;
             overflow-x: auto;
+            overflow-y: hidden;
             padding-bottom: .35rem;
+            scrollbar-width: none;
+            max-width: 100%;
+        }
+        .stTabs [data-baseweb="tab-list"]::-webkit-scrollbar {
+            display: none;
         }
         .stTabs [data-baseweb="tab"] {
             background: var(--yt-surface);
@@ -144,12 +256,18 @@ def inject_mobile_dark_theme() -> None:
             border-radius: 999px;
             padding: .55rem .9rem;
             min-width: fit-content;
+            flex: 0 0 auto;
+        }
+        .stTabs [data-baseweb="tab-highlight"],
+        .stTabs [data-baseweb="tab-border"] {
+            display: none !important;
         }
         .stTabs [aria-selected="true"] {
-            background: #fff !important;
+            background: var(--yt-red) !important;
+            border-color: var(--yt-red) !important;
         }
         .stTabs [aria-selected="true"] p {
-            color: #0f0f0f !important;
+            color: #fff !important;
         }
         div[data-testid="stMetric"] {
             background: var(--yt-surface);
@@ -166,6 +284,8 @@ def inject_mobile_dark_theme() -> None:
             padding: 1.15rem;
             background: radial-gradient(circle at top left, rgba(255,0,51,.22), transparent 32%), var(--yt-surface);
             margin-bottom: 1rem;
+            max-width: 100%;
+            overflow: hidden;
         }
         .ytr-kicker {
             color: var(--yt-red);
@@ -197,6 +317,8 @@ def inject_mobile_dark_theme() -> None:
             padding: 1rem;
             margin: .78rem 0;
             box-shadow: 0 14px 28px rgba(0,0,0,.25);
+            max-width: 100%;
+            overflow: hidden;
         }
         .ytr-card:focus-within, .ytr-card:hover {
             border-color: rgba(255,255,255,.28);
@@ -316,10 +438,35 @@ def inject_mobile_dark_theme() -> None:
             .ytr-card { padding: 1.15rem; }
             .ytr-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         }
+        @media (max-width: 720px) {
+            [data-testid="stHorizontalBlock"] {
+                flex-wrap: wrap !important;
+                gap: .75rem !important;
+            }
+            [data-testid="column"] {
+                width: 100% !important;
+                flex: 1 1 100% !important;
+                min-width: 0 !important;
+            }
+            div[data-testid="stMetric"] {
+                width: 100% !important;
+            }
+        }
         @media (max-width: 520px) {
+            .block-container {
+                padding-right: max(12px, env(safe-area-inset-right)) !important;
+                padding-left: max(12px, env(safe-area-inset-left)) !important;
+            }
             .stButton > button {
                 width: 100%;
                 min-height: 44px;
+            }
+            .stTabs [data-baseweb="tab"] {
+                padding: .5rem .75rem;
+            }
+            h2 {
+                font-size: 1.45rem !important;
+                line-height: 1.1 !important;
             }
             .ytr-card {
                 border-radius: 18px;
@@ -434,39 +581,39 @@ def render_video_filters(
         help="Filtra por título, canal, keywords o URL.",
     )
 
-    col1, col2 = st.columns(2)
-    sort_by = col1.selectbox("Ordenar por", sort_options, index=default_sort_index, key=f"{key_prefix}_sort")
-    keyword_filter = col2.selectbox(
-        "Keyword",
-        ["Todas"] + extract_keywords(dataframe),
-        key=f"{key_prefix}_keyword",
-    )
-
-    col3, col4 = st.columns(2)
-    min_score = col3.slider(
-        "Score mínimo",
-        min_value=0,
-        max_value=100,
-        value=0,
-        step=5,
-        key=f"{key_prefix}_score",
-    )
-    max_subscribers = col4.selectbox(
-        "Máx. suscriptores",
-        ["Sin límite", "10k", "50k", "100k", "250k", "1M"],
-        index=0,
-        key=f"{key_prefix}_subscribers",
-        help="Útil para encontrar vídeos que explotan en canales pequeños.",
-    )
-
-    limit = 25
-    if show_limit:
-        limit = st.segmented_control(
-            "Mostrar",
-            options=[10, 25, 50],
-            default=25,
-            key=f"{key_prefix}_limit",
+    with st.container(border=True):
+        st.markdown("**Filtros y orden**")
+        sort_by = st.selectbox("Ordenar por", sort_options, index=default_sort_index, key=f"{key_prefix}_sort")
+        keyword_filter = st.selectbox(
+            "Keyword",
+            ["Todas"] + extract_keywords(dataframe),
+            key=f"{key_prefix}_keyword",
         )
+
+        min_score = st.slider(
+            "Score mínimo",
+            min_value=0,
+            max_value=100,
+            value=0,
+            step=5,
+            key=f"{key_prefix}_score",
+        )
+        max_subscribers = st.selectbox(
+            "Máx. suscriptores",
+            ["Sin límite", "10k", "50k", "100k", "250k", "1M"],
+            index=0,
+            key=f"{key_prefix}_subscribers",
+            help="Útil para encontrar vídeos que explotan en canales pequeños.",
+        )
+
+        limit = 25
+        if show_limit:
+            limit = st.segmented_control(
+                "Mostrar",
+                options=[10, 25, 50],
+                default=25,
+                key=f"{key_prefix}_limit",
+            )
 
     filtered = filter_dataframe(dataframe, search)
     filtered = filter_by_keyword(filtered, keyword_filter)
